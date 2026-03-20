@@ -7,6 +7,10 @@
 //! cargo run -- --pcap capture.pcap --output-format json
 //! ```
 
+mod capture;
+mod parser;
+mod data;
+
 use clap::{ArgGroup, Parser, ValueEnum};
 
 /// Output format
@@ -30,15 +34,10 @@ impl std::fmt::Display for Output {
 
 #[derive(Parser, Debug)]
 #[command(name = "DroneID Analyser", author, version, about = "Wi-Fi frame analysis for DroneID detection")]
-#[command(group(
-    ArgGroup::new("source")
-        .args(["pcap", "interface"])
-        .required(false)
-        .multiple(false)
-))]
+#[command(group(ArgGroup::new("source").args(["pcap", "interface"]).required(false).multiple(false)))]
 
 pub struct Cli {
-    /// Path to the PCAP file to analyse.
+    /// Retrieve beacon from FILE.
     #[arg(long, value_name = "FILE")]
     pub pcap: Option<String>,
 
@@ -74,23 +73,23 @@ pub struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    // --cards : Interfaces display
     if cli.cards {
-        println!("List of network interfaces :");
+        println!("Available interfaces: (Partie 6)");
         return;
     }
 
-    // No --pcap nor --interface → error
-    if cli.pcap.is_none() && cli.interface.is_none() {
-        eprintln!("Error : specify --pcap <fichier> or --interface <interface>.");
-        std::process::exit(1);
-    }
-
-    // Dispatch
     match (&cli.pcap, &cli.interface) {
-        (Some(fichier), None) => println!("file analysis : {fichier}"),
-        (None, Some(iface))   => println!("Capture : {iface}"),
-        _                     => unreachable!(),
+        (Some(file), None) => {
+            let drones = capture::analyse_pcap(file, cli.verbose);
+            println!("\n{} drone(s) identified.", drones.len());
+            // Partie 4 : sauvegarde ici
+        }
+        (None, Some(iface)) => {
+            println!("Live capture on {iface} — Partie 6");
+        }
+        _ => {
+            eprintln!("Error: specify --pcap or --interface.");
+            std::process::exit(1);
+        }
     }
 }
-
