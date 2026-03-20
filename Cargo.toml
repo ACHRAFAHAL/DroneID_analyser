@@ -1,0 +1,13 @@
+[package]
+name = "TP"
+version = "0.1.0"
+edition = "2024"
+description = "Analyse de trames Wi-Fi pour la détection de drones"
+authors = ["AHAL Achraf"]
+
+[[bin]]
+name = "TP"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
