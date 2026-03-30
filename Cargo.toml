@@ -1,14 +1,24 @@
 [package]
-name = "TP"
+name = "tp"
 version = "0.1.0"
 edition = "2024"
 description = "Analyse de trames Wi-Fi pour la détection de drones"
-authors = ["AHAL Achraf"]
+authors = ["Achraf"]
+
+[lib]
+name = "tp"
+path = "src/lib.rs"
 
 [[bin]]
-name = "TP"
+name = "tp"
 path = "src/main.rs"
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-L", "C:/npcap-sdk-1.16/Lib/x64"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 pcap = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+csv = "1"

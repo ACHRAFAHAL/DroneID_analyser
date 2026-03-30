@@ -2,14 +2,11 @@
 //!
 //! Wi-Fi frame analysis for drone identification and location and extraction of relevant information.
 //!
-//! ## Utilisation
-//! ```bash
-//! cargo run -- --pcap capture.pcap --output-format json
-//! ```
 
 mod capture;
-mod parser;
 mod data;
+mod output;
+mod parser;
 
 use clap::{ArgGroup, Parser, ValueEnum};
 
@@ -20,7 +17,6 @@ pub enum Output {
     Csv,
     Text,
 }
-
 
 impl std::fmt::Display for Output {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -33,7 +29,12 @@ impl std::fmt::Display for Output {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "DroneID Analyser", author, version, about = "Wi-Fi frame analysis for DroneID detection")]
+#[command(
+    name = "DroneID Analyser",
+    author,
+    version,
+    about = "Wi-Fi frame analysis for DroneID detection"
+)]
 #[command(group(ArgGroup::new("source").args(["pcap", "interface"]).required(false).multiple(false)))]
 
 pub struct Cli {
@@ -74,18 +75,26 @@ fn main() {
     let cli = Cli::parse();
 
     if cli.cards {
-        println!("Available interfaces: (Partie 6)");
+        println!("Available interfaces: ");
         return;
     }
 
     match (&cli.pcap, &cli.interface) {
         (Some(file), None) => {
             let drones = capture::analyse_pcap(file, cli.verbose);
-            println!("\n{} drone(s) identified.", drones.len());
-            // Partie 4 : sauvegarde ici
+            let format = match cli.output_format {
+                Output::Json => output::Format::Json,
+                Output::Csv => output::Format::Csv,
+                Output::Text => output::Format::Text,
+            };
+            if let Err(e) = output::save_results(&drones, &format, &cli.output_file) {
+                eprintln!("Error saving results: {e}");
+                std::process::exit(1);
+            }
         }
+        // ← these two arms are missing
         (None, Some(iface)) => {
-            println!("Live capture on {iface} — Partie 6");
+            println!("Live capture on '{iface}' — Partie 6");
         }
         _ => {
             eprintln!("Error: specify --pcap or --interface.");

@@ -1,5 +1,7 @@
+use serde::Serialize;
+
 /// GPS coordinates of a drone.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GpsPosition {
     /// Latitude in decimal degrees
     pub latitude: f64,
@@ -10,7 +12,7 @@ pub struct GpsPosition {
 }
 
 /// Data extracted from a DroneID beacon frame.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DroneInfo {
     /// drone ID
     pub id: String,
