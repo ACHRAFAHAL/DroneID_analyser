@@ -84,17 +84,14 @@ pub fn extract_drone_payload<'a>(tlvs: &[Tlv<'a>]) -> Option<&'a [u8]> {
 
 /// Parses the DroneID payload into a DroneInfo struct.
 pub fn parse_drone_payload(payload: &[u8], mac: &str) -> Option<DroneInfo> {
-    if payload.len() < 27 {
-        return None;
-    }
-
-    let id = String::from_utf8_lossy(&payload[0..11]).trim().to_string();
-    let lat = i32::from_le_bytes(payload[11..15].try_into().ok()?) as f64 / 1e5;
-    let lon = i32::from_le_bytes(payload[15..19].try_into().ok()?) as f64 / 1e5;
-    let alt = u16::from_le_bytes(payload[19..21].try_into().ok()?) as f32;
-    let height = u16::from_le_bytes(payload[21..23].try_into().ok()?) as f32;
-    let speed = u16::from_le_bytes(payload[23..25].try_into().ok()?) as f32 / 100.0;
-    let heading = u16::from_le_bytes(payload[25..27].try_into().ok()?) as f32;
+    let beacon = remoteid::france::FrenchBeacon::decode(payload);
+    let id = beacon.identifier_str()?.trim().to_string();
+    let lat = beacon.latitude?;
+    let lon = beacon.longitude?;
+    let alt = beacon.altitude.unwrap_or(0) as f32;
+    let height = beacon.height.unwrap_or(0) as f32;
+    let speed = beacon.horizontal_speed.unwrap_or(0) as f32;
+    let heading = beacon.true_course.unwrap_or(0) as f32;
 
     Some(DroneInfo {
         id,
@@ -108,4 +105,37 @@ pub fn parse_drone_payload(payload: &[u8], mac: &str) -> Option<DroneInfo> {
         speed,
         heading,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decodes_french_beacon_tlv() {
+        // Body after OUI 6A:5C:35 + type 0x01, per arrete du 27 decembre 2019.
+        let mut p = vec![1, 1, 1];
+        p.extend([2, 30]);
+        p.extend(b"ILLUSTRATION000000000000000001");
+        p.extend([4, 4]);
+        p.extend(4_885_667i32.to_be_bytes()); // 48.85667
+        p.extend([5, 4]);
+        p.extend(235_222i32.to_be_bytes()); // 2.35222
+        p.extend([6, 2]);
+        p.extend(120i16.to_be_bytes());
+        p.extend([7, 2]);
+        p.extend(85i16.to_be_bytes());
+        p.extend([10, 1, 12]);
+        p.extend([11, 2]);
+        p.extend(270u16.to_be_bytes());
+
+        let d = parse_drone_payload(&p, "aa:bb:cc:dd:ee:ff").unwrap();
+        assert_eq!(d.id, "ILLUSTRATION000000000000000001");
+        assert!((d.position.latitude - 48.85667).abs() < 1e-9);
+        assert!((d.position.longitude - 2.35222).abs() < 1e-9);
+        assert_eq!(d.position.altitude, 120.0);
+        assert_eq!(d.height, 85.0);
+        assert_eq!(d.speed, 12.0);
+        assert_eq!(d.heading, 270.0);
+    }
 }
